@@ -1,0 +1,8 @@
+numpy
+pandas
+scipy
+matplotlib
+# Requires ROS 2 environment providing:
+# rclpy
+# rosbag2_py
+# tf2_msgs
