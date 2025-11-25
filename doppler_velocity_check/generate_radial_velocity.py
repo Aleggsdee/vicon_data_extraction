@@ -12,7 +12,7 @@ from matplotlib import cm                                                    # <
 #  PARAMETERS
 # ============
 
-CSV_PATH = 'vicon_poses.csv'   # output from extract_vicon_poses.py
+CSV_PATH = '../postprocessing/vicon_poses.csv'   # output from extract_vicon_poses.py
 
 # Box half-extents in BODY frame (meters)
 HX = 0.40
@@ -47,7 +47,7 @@ LIDAR_AXIS_LEN  = 0.5
 
 # LiDAR intrinsics / scanning model
 H_FOV = np.deg2rad(360.0)   # horizontal FOV (full 360)
-V_FOV = np.deg2rad(360.0)   # vertical FOV
+V_FOV = np.deg2rad(120.0)   # vertical FOV
 H_RES = np.deg2rad(0.5)     # horizontal angular resolution (only used if you quantize)
 V_RES = np.deg2rad(1.0)     # vertical angular resolution
 
@@ -287,6 +287,68 @@ def main():
     print("Loaded", len(t), "poses.")
     print("Example v [m/s]:", v_world[0])
     print("Example w [rad/s]:", omega_world[0])
+
+    # ==========================================
+    # RADIAL VELOCITY VALIDATION (single point)
+    # ==========================================
+
+    # Choose a fixed point in BODY frame (e.g. front-center of +X face)
+    point_b = np.array([HX, 0.0, 0.0])
+
+    N = len(t)
+    r_point = np.zeros(N)          # range from LiDAR to this point
+    v_r_model = np.zeros(N)        # analytic radial velocity (Doppler formula)
+    v_r_fd = np.zeros(N)           # finite-difference radial velocity
+
+    for i in range(N):
+        R_wb = R_list[i]
+        p_wb = p[i]             # centroid in WORLD
+        v    = v_world[i]       # linear velocity in WORLD
+        w    = omega_world[i]   # angular velocity in WORLD
+
+        # Point position in WORLD
+        P_w = R_wb @ point_b + p_wb              # (3,)
+        rel = P_w - LIDAR_POS_W                  # (3,)
+
+        r_point[i] = np.linalg.norm(rel)         # scalar range
+
+        if r_point[i] > 1e-9:
+            n_i = rel / r_point[i]               # LOS unit vector in WORLD
+        else:
+            n_i = np.zeros(3)
+
+        # p_o = centroid position relative to LiDAR (WORLD frame)
+        p_o = p_wb - LIDAR_POS_W
+
+        # Analytic radial velocity:
+        #   v_r = n^T v - (p_o × n)^T ω
+        term1 = n_i @ v
+        cross_pn = np.cross(p_o, n_i)
+        term2 = cross_pn @ w
+        v_r_model[i] = term1 - term2
+
+    # Finite-difference radial velocity from range r(t)
+    # central difference for interior points, copy neighbors at ends
+    for i in range(1, N - 1):
+        dt_c = t[i+1] - t[i-1]
+        v_r_fd[i] = (r_point[i+1] - r_point[i-1]) / dt_c
+
+    v_r_fd[0]  = v_r_fd[1]
+    v_r_fd[-1] = v_r_fd[-2]
+
+    # Write to CSV for offline analysis
+    rv_df = pd.DataFrame({
+        't': t,
+        'range': r_point,
+        'v_r_model': v_r_model,
+        'v_r_fd': v_r_fd,
+        'diff': v_r_model - v_r_fd
+    })
+    rv_df.to_csv('radial_velocity_check.csv', index=False)
+    print("Wrote radial velocity check to radial_velocity_check.csv")
+    print("RMS error between model and finite-diff (m/s):",
+          np.sqrt(np.mean((v_r_model - v_r_fd)**2)))
+
 
     corners_b = box_corners_body()
     surface_b = sample_box_surface_body()
