@@ -1,5 +1,6 @@
 # NEED TO source /opt/ros/humble/setup.bash
 # NEED TO source vicon_receiver/install/setup.bash
+# run in python3 (make sure conda deactivated)
 # reading from bag file tutorial: https://docs.ros.org/en/rolling/Tutorials/Advanced/Reading-From-A-Bag-File-Python.html
 
 import os
