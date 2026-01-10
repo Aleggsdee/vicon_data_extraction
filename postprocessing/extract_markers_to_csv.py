@@ -31,28 +31,31 @@ def extract_markers_to_csv(bag_path, output_csv):
 
     # Optional: inspect topics to make sure topic exists
     topics_and_types = reader.get_all_topics_and_types()
-    topic_name = '/vicon/alex_box/markers' # replace later as a list of wanted topics
+    wanted_topics = ['/vicon/alex_box/markers', '/vicon/alex_calib/markers']
+    
+    # topic_name = '/vicon/alex_box/markers' # replace later as a list of wanted topics
 
-    topic_found = any(t.name == topic_name for t in topics_and_types)
-    if not topic_found:
-        print(f"Topic {topic_name} not found in bag. Topics are:")
-        for t in topics_and_types:
-            print(f"  {t.name} ({t.type})")
-        return
+    topic_found = True
+    for topic in wanted_topics:
+        topic_found &= any(t.name == topic for t in topics_and_types)
+        if not topic_found:
+            print(f"Topic {topic} not found in bag. Topics are:")
+            for t in topics_and_types:
+                print(f"  {t.name} ({t.type})")
+            return
 
-    print(f"Found {topic_name}")
+    print(f"Found {wanted_topics}")
 
     # Create a mapping from topic name to type for quick lookup
-    topic_type_map = {t.name: t.type for t in topics_and_types}
-
-    print(topic_type_map)
-
     # Prepare CSV
     with open(output_csv, 'w', newline='') as csv_file:
         writer = csv.writer(csv_file)
     
         msg_count = 0
         marker_pos = {}
+        headers = []
+        axes = ['x', 'y', 'z']
+        marker_names = []
 
         # Iterate over all messages
         while reader.has_next():
@@ -62,16 +65,15 @@ def extract_markers_to_csv(bag_path, output_csv):
             # it's stored as a flat list of message records
             (topic, data, t) = reader.read_next()
 
-            if topic != topic_name:
+            if topic not in wanted_topics:
                 continue
 
-            # Deserialize TFMessage
+            # Deserialize Message
             msg = deserialize_message(data, Markers)
-
-            # Bag timestamp t is in nanoseconds
-            t_sec = t * 1e-9
-
-            msg_count += 1
+            
+            # avoid double counting
+            if topic == wanted_topics[0]:
+                msg_count += 1
 
             for marker in msg.markers:
                 name = marker.marker_name
@@ -81,17 +83,17 @@ def extract_markers_to_csv(bag_path, output_csv):
                         'y': marker.translation_y,
                         'z': marker.translation_z
                     }
+                    marker_names.append(name)
+                    headers.extend(f"{name}_{axis}" for axis in axes)
 
                 marker_pos[name]['x'] += marker.translation_x
                 marker_pos[name]['y'] += marker.translation_y
                 marker_pos[name]['z'] += marker.translation_z
 
-        headers = [f"{marker.marker_name}_{axis}" for marker in msg.markers for axis in ('x', 'y', 'z')]
         writer.writerow(headers)
 
         marker_pos_avg = []
-        for marker in msg.markers:
-            name = marker.marker_name
+        for name in marker_names:
             marker_pos[name]['x'] /= msg_count
             marker_pos[name]['y'] /= msg_count
             marker_pos[name]['z'] /= msg_count
