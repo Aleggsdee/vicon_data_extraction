@@ -4,11 +4,12 @@ import os
 import argparse
 import csv
 
-import rclpy
-from rclpy.serialization import deserialize_message
+import rosbag2_py # Gives you the bytes
+import rclpy # teaches Python how to interpret those bytes as ROS messages
+from rclpy.serialization import deserialize_message # Serialization = turning a structured message into bytes, Deserialization = turning bytes back into a structured message
 from tf2_msgs.msg import TFMessage
 
-import rosbag2_py
+
 
 
 def extract_tf_to_csv(bag_path, target_child_frame, output_csv):
@@ -16,16 +17,16 @@ def extract_tf_to_csv(bag_path, target_child_frame, output_csv):
     rclpy.init()
 
     # Set up rosbag2 reader
-    storage_options = rosbag2_py.StorageOptions(
+    storage_options = rosbag2_py.StorageOptions( # how to find bag + storage data type
         uri=bag_path,
-        storage_id='sqlite3'
+        storage_id='sqlite3' # "sqlite3" (for .db3)
     )
     converter_options = rosbag2_py.ConverterOptions(
         input_serialization_format='cdr',
         output_serialization_format='cdr'
     )
 
-    reader = rosbag2_py.SequentialReader()
+    reader = rosbag2_py.SequentialReader() # reader to iterate messages in time order
     reader.open(storage_options, converter_options)
 
     # Optional: inspect topics to make sure /tf exists
