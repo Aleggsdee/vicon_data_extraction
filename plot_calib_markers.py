@@ -3,6 +3,7 @@ import argparse
 import re
 import pandas as pd
 import numpy as np
+from scipy.spatial.distance import pdist, squareform
 import matplotlib.pyplot as plt
 
 
@@ -56,6 +57,19 @@ def main():
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
+
+    # Get distance between every marker
+    # IMPORTANT! DON'T FORGET TO ADD SENSOR Z OFFSET + VICON MARKER OFFSET
+    points_matrix = df.values.reshape(-1, 3)
+    dist_array = pdist(points_matrix, metric='euclidean')
+    dist_matrix = squareform(dist_array)
+    unsorted_marker_names = [c[:-2] for c in cols if c.endswith("_x") and (c[:-2] + "_y") in cols and (c[:-2] + "_z") in cols]
+    dist_df = pd.DataFrame(
+        dist_matrix,
+        index = unsorted_marker_names,
+        columns = unsorted_marker_names
+    )
+    print(dist_df.to_string(float_format="{:.4f}".format))
 
     # Plot each marker
     for name in marker_names:

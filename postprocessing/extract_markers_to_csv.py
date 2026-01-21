@@ -32,7 +32,8 @@ def extract_markers_to_csv(bag_path, output_csv):
 
     # Optional: inspect topics to make sure topic exists
     topics_and_types = reader.get_all_topics_and_types()
-    wanted_topics = ['/vicon/alex_box/markers', '/vicon/alex_calib/markers']
+    # wanted_topics = ['/vicon/alex_box/markers', '/vicon/alex_calib/markers']
+    wanted_topics = ['/vicon/alex_calib/markers']
     
     # topic_name = '/vicon/alex_box/markers' # replace later as a list of wanted topics
 

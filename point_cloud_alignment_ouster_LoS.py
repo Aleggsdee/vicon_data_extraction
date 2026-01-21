@@ -1,7 +1,10 @@
 import csv
+import pandas as pd
 import numpy as np
+from scipy.spatial.distance import pdist, squareform
 import matplotlib.pyplot as plt
 
+# Get vicon points
 with open("/home/asrl/Documents/Research/vicon_data_extraction/postprocessing/vicon_markers.csv", newline="") as f:
     reader = csv.DictReader(f)
     for row in reader:
@@ -9,21 +12,43 @@ with open("/home/asrl/Documents/Research/vicon_data_extraction/postprocessing/vi
         alex_calib2 = np.array([row["alex_calib2_x"], row["alex_calib2_y"], row["alex_calib2_z"]], dtype=float) / 1000.0
         alex_calib3 = np.array([row["alex_calib3_x"], row["alex_calib3_y"], row["alex_calib3_z"]], dtype=float) / 1000.0
         alex_calib4 = np.array([row["alex_calib4_x"], row["alex_calib4_y"], row["alex_calib4_z"]], dtype=float) / 1000.0
+        alex_calib5 = np.array([row["alex_calib5_x"], row["alex_calib5_y"], row["alex_calib5_z"]], dtype=float) / 1000.0
+        alex_calib6 = np.array([row["alex_calib6_x"], row["alex_calib6_y"], row["alex_calib6_z"]], dtype=float) / 1000.0
         alex_calib7 = np.array([row["alex_calib7_x"], row["alex_calib7_y"], row["alex_calib7_z"]], dtype=float) / 1000.0
+        aeva = np.array([row["aeva_x"], row["aeva_y"], row["aeva_z"]], dtype=float) / 1000.0
 
-aeva_1 = np.array([3.3671, -0.0384, -0.3232])
-aeva_2 = np.array([3.3507, 0.0646, 0.0431])
-aeva_3 = np.array([3.2768, 0.3548, -0.0771])
-aeva_4 = np.array([3.2155, 0.5060, 0.4129])
-aeva_7 = np.array([3.2230, 0.5151, -0.3363])
+# aeva points
+with open("/home/asrl/Documents/Research/warthog_offline_tools/post_processing/01_19_2026/calculated_aeva_points_from_ouster_LoS.csv", newline="") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        aeva1 = np.array([row["aeva1_x"], row["aeva1_y"], row["aeva1_z"]], dtype=float) / 1000.0
+        aeva2 = np.array([row["aeva2_x"], row["aeva2_y"], row["aeva2_z"]], dtype=float) / 1000.0
+        aeva3 = np.array([row["aeva3_x"], row["aeva3_y"], row["aeva3_z"]], dtype=float) / 1000.0
+        aeva4 = np.array([row["aeva4_x"], row["aeva4_y"], row["aeva4_z"]], dtype=float) / 1000.0
+        aeva5 = np.array([row["aeva5_x"], row["aeva5_y"], row["aeva5_z"]], dtype=float) / 1000.0
+        aeva6 = np.array([row["aeva6_x"], row["aeva6_y"], row["aeva6_z"]], dtype=float) / 1000.0
+        aeva7 = None
 
 # ------------------Umeyama Algorithm---------------------
 
 # Compute centroids
-vicon_pc = [alex_calib1, alex_calib2, alex_calib3, alex_calib4, alex_calib7] # a
-p_vicon = np.mean(vicon_pc, axis = 0)
+unfiltered_vicon_pc = [alex_calib1, alex_calib2, alex_calib3, alex_calib4, alex_calib5, alex_calib6, alex_calib7] # a
+unfiltered_aeva_pc = [aeva1, aeva2, aeva3, aeva4, aeva5, aeva6, aeva7] # b
 
-aeva_pc = [aeva_1, aeva_2, aeva_3, aeva_4, aeva_7] # b
+# Remove None points from aeva
+vicon_pc = []
+aeva_pc = []
+for i in range(len(unfiltered_aeva_pc)):
+    if unfiltered_aeva_pc[i] is None:
+        continue
+    
+    vicon_pc.append(unfiltered_vicon_pc[i])
+    aeva_pc.append(unfiltered_aeva_pc[i])
+
+print(aeva_pc)
+
+
+p_vicon = np.mean(vicon_pc, axis = 0)
 p_aeva = np.mean(aeva_pc, axis = 0)
 
 W = np.zeros((3, 3), dtype=float)
